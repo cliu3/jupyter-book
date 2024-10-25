@@ -51,7 +51,7 @@ async def _html_to_pdf(html_file, pdf_file):
         # Waiting for networkidle seems to let mathjax render
         page.on("console", lambda msg: print(f"Console: {msg.type}: {msg.text}"))
         await page.goto(f"file:///{html_file}", timeout=100000)
-        await page.wait_for_load_state('networkidle')
+        await page.wait_for_load_state('networkidle', timeout=130000)
         # Give it *some* margins to make it look a little prettier
         # I just made these up
         page_margins = {"left": "0in", "right": "0in", "top": ".5in", "bottom": ".5in"}
