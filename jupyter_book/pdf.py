@@ -42,7 +42,8 @@ async def _html_to_pdf(html_file, pdf_file):
         )
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
+        browser = await p.firefox.launch(headless=True)
+        # browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
 
         # Absolute path is needed
