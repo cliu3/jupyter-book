@@ -19,7 +19,7 @@ LATEX_DOCUMENTS = (
 
 def html_to_pdf(html_file, pdf_file):
     """
-    Convert arbitrary HTML file to PDF using pyppeteer.
+    Convert arbitrary HTML file to PDF using Playwright.
 
     Parameters
     ----------
@@ -33,27 +33,30 @@ def html_to_pdf(html_file, pdf_file):
 
 async def _html_to_pdf(html_file, pdf_file):
     try:
-        from pyppeteer import launch
+        from playwright.async_api import async_playwright
     except ImportError:
         _error(
-            "Generating PDF from book HTML requires the pyppeteer package. "
+            "Generating PDF from book HTML requires the playwright package. "
             "Install it first.",
             ImportError,
         )
-    browser = await launch(args=["--no-sandbox"])
-    page = await browser.newPage()
 
-    # Absolute path is needed
-    html_file = Path(html_file).resolve()
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
 
-    # Waiting for networkidle0 seems to let mathjax render
-    await page.goto(f"file:///{html_file}", {"waitUntil": ["networkidle2"]})
-    # Give it *some* margins to make it look a little prettier
-    # I just made these up
-    page_margins = {"left": "0in", "right": "0in", "top": ".5in", "bottom": ".5in"}
-    await page.addStyleTag(
-        {
-            "content": """
+        # Absolute path is needed
+        html_file = Path(html_file).resolve()
+
+        # Waiting for networkidle seems to let mathjax render
+        page.on("console", lambda msg: print(f"Console: {msg.type}: {msg.text}"))
+        await page.goto(f"file:///{html_file}", timeout=100000)
+        await page.wait_for_load_state('networkidle', timeout=100000)
+        # Give it *some* margins to make it look a little prettier
+        # I just made these up
+        page_margins = {"left": "0in", "right": "0in", "top": ".5in", "bottom": ".5in"}
+        await page.add_style_tag(
+            content="""
                 div.cell_input {
                     -webkit-column-break-inside: avoid;
                     page-break-inside: avoid;
@@ -64,11 +67,10 @@ async def _html_to_pdf(html_file, pdf_file):
                     page-break-inside: avoid;
                     break-inside: avoid;
                 }
-         """
-        }
-    )
-    await page.pdf({"path": pdf_file, "margin": page_margins})
-    await browser.close()
+            """
+        )
+        await page.pdf(path=pdf_file, margin=page_margins)
+        await browser.close()
 
 
 def update_latex_documents(latex_documents, latexoverrides):
